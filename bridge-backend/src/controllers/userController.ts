@@ -153,21 +153,18 @@ export const getSingles = async (
     const skip = (page - 1) * limit;
 
     const currentUserId = req.user?._id;
-
-    const users = await User.find({
-      _id: { $ne: currentUserId },
-      isActive: true,
-      'profile.photos.0': { $exists: true },
-    })
-      .select('profile.name profile.dob profile.gender profile.profilePhoto profile.photos profile.bio profile.interests profile.location profile.height profile.education')
-      .skip(skip)
-      .limit(limit)
-      .lean();
+const users = await User.find({
+  _id: { $ne: currentUserId },
+  isActive: true,
+})  .select('profile.name profile.dob profile.gender profile.profilePhoto profile.photos profile.bio profile.interests profile.location profile.height profile.education')
+  .sort({ lastLoginTime: -1 })
+  .skip(skip)
+  .limit(limit)
+  .lean();
 
     const total = await User.countDocuments({
       _id: { $ne: currentUserId },
       isActive: true,
-      'profile.photos.0': { $exists: true },
     });
 
     const singles = users.map((user) => {

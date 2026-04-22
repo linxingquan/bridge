@@ -32,16 +32,9 @@ export const SinglesScreen: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<SingleUser | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  const lastTap = useRef<number>(0);
-
-  const handleNameDoubleTap = (user: SingleUser) => {
-    const now = Date.now();
-    if (now - lastTap.current < 300) {
-      setSelectedUser(user);
-      setModalVisible(true);
-    } else {
-      lastTap.current = now;
-    }
+  const handleProfilePress = (user: SingleUser) => {
+    setSelectedUser(user);
+    setModalVisible(true);
   };
 
   const loadSingles = useCallback(async (pageNum: number = 1, refresh: boolean = false) => {
@@ -49,9 +42,10 @@ export const SinglesScreen: React.FC = () => {
     
     if (!refresh && pageNum > 1 && !hasMore) return;
 
+    console.info(`Loading singles - Page: ${pageNum}, Refresh: ${refresh}`);
     setLoading(true);
     try {
-      const result = await api.getSingles(pageNum, 10);
+      const result = await api.getSingles(pageNum, 2);
       
       if (refresh || pageNum === 1) {
         setSingles(result.singles);
@@ -139,7 +133,7 @@ export const SinglesScreen: React.FC = () => {
         </View>
         
         <View style={styles.cardInfo}>
-          <TouchableWithoutFeedback onPress={() => handleNameDoubleTap(item)}>
+          <TouchableWithoutFeedback onPress={() => handleProfilePress(item)}>
             <Text style={styles.cardName}>{item.name}, {item.age}, {item.gender}</Text>
           </TouchableWithoutFeedback>
           {item.location && <Text style={styles.cardLocation}>{item.location}</Text>}

@@ -20,6 +20,7 @@ export const register = async (req: AuthRequest, res: Response): Promise<void> =
     }
 
     const user = new User({ email, password });
+    user.lastLoginTime = new Date();
     await user.save();
 
     const token = generateToken(user._id.toString());
@@ -60,9 +61,12 @@ export const login = async (req: AuthRequest, res: Response): Promise<void> => {
       return;
     }
 
+    user.lastLoginTime = new Date();
+    await user.save();
+
     console.log('Generating token for user:', user._id);
     const token = generateToken(user._id.toString());
-    res.json({ token, user: { id: user._id, email: user.email } });
+    res.status(200).json({ token, user: { id: user._id, email: user.email } });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -71,13 +75,17 @@ export const login = async (req: AuthRequest, res: Response): Promise<void> => {
 
 export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const user = await User.findById(req.user?._id).select('-password');
+    if (!req.user?._id) {
+      res.status(401).json({ message: 'Not authenticated' });
+      return;
+    }
+    const user = await User.findById(req.user._id).select('-password');
     if (!user) {
       res.status(404).json({ message: 'User not found' });
       return;
     }
 
-    res.json(user);
+    res.status(200).json(user);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

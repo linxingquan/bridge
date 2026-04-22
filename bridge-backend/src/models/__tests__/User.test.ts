@@ -1,4 +1,19 @@
+import mongoose from 'mongoose';
 import { User, IUser } from '../User';
+
+beforeAll(async () => {
+  const url = process.env.MONGODB_URI || 'mongodb://localhost:27017/bridge_test';
+  await mongoose.connect(url);
+});
+
+afterAll(async () => {
+  await mongoose.connection.dropDatabase();
+  await mongoose.connection.close();
+});
+
+beforeEach(async () => {
+  await User.deleteMany({});
+});
 
 describe('User Model', () => {
   describe('User schema validation', () => {

@@ -1,7 +1,18 @@
+import mongoose from 'mongoose';
 import { Request, Response } from 'express';
 import { register, login, getMe } from '../authController';
 import { User } from '../../models';
 import { AuthRequest } from '../../middleware/auth';
+
+beforeAll(async () => {
+  const url = process.env.MONGODB_URI || 'mongodb://localhost:27017/bridge_test';
+  await mongoose.connect(url);
+});
+
+afterAll(async () => {
+  await mongoose.connection.dropDatabase();
+  await mongoose.connection.close();
+});
 
 describe('Auth Controller', () => {
   let mockRequest: Partial<AuthRequest>;
