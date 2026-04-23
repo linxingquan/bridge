@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text, View, StyleSheet } from 'react-native';
@@ -11,13 +11,15 @@ import {
   EditProfileScreen,
   SettingsScreen,
   SinglesScreen,
+  ProfileDetailScreen,
 } from '../screens';
 import { colors, typography } from '../theme';
+import { api } from '../services/api';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-const TabIcon: React.FC<{ name: string; focused: boolean }> = ({ name, focused }) => {
+const TabIcon: React.FC<{ name: string; focused: boolean; hasUnread?: boolean }> = ({ name, focused, hasUnread }) => {
   const icons: Record<string, string> = {
     Singles: '👥',
     Discover: '🔥',
@@ -31,20 +33,61 @@ const TabIcon: React.FC<{ name: string; focused: boolean }> = ({ name, focused }
       <Text style={[styles.tabIcon, focused && styles.tabIconFocused]}>
         {icons[name]}
       </Text>
+      {name === 'Messages' && hasUnread && !focused && (
+        <View style={styles.unreadBadge} />
+      )}
     </View>
   );
 };
 
 const MainTabs: React.FC = () => {
+  const [hasUnread, setHasUnread] = useState(false);
+
+  useEffect(() => {
+    const checkUnread = async () => {
+      try {
+        const currentUser = await api.getMe();
+        const chats = await api.getChats();
+        const hasUnreadMessages = chats.some((chat: any) => {
+          if (typeof chat.unreadCount === 'number') {
+            return chat.unreadCount > 0;
+          }
+
+          const lastMessage = chat.lastMessage;
+          if (!lastMessage || lastMessage.isRead) {
+            return false;
+          }
+
+          const senderId =
+            typeof lastMessage.senderId === 'string'
+              ? lastMessage.senderId
+              : lastMessage.senderId?._id;
+          return senderId && senderId !== currentUser?._id;
+        });
+        setHasUnread(hasUnreadMessages);
+      } catch (error) {
+        console.error('Failed to check unread:', error);
+      }
+    };
+
+    checkUnread();
+    const interval = setInterval(checkUnread, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
+        tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} hasUnread={hasUnread} />,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.tabLabel,
+        tabBarItemStyle:
+          route.name === 'Messages' && hasUnread
+            ? styles.messagesTabHighlight
+            : undefined,
       })}
     >
       <Tab.Screen name="Singles" component={SinglesScreen} />
@@ -63,6 +106,7 @@ export const MainNavigator: React.FC = () => {
       <Stack.Screen name="Chat" component={ChatScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="ProfileDetail" component={ProfileDetailScreen} />
     </Stack.Navigator>
   );
 };
@@ -88,5 +132,20 @@ tabBar: {
   },
   tabIconFocused: {
     transform: [{ scale: 1.1 }],
+  },
+  unreadBadge: {
+    position: 'absolute',
+    top: 1,
+    right: -4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+  },
+  messagesTabHighlight: {
+    backgroundColor: `${colors.primary}1A`,
+    borderRadius: 14,
+    marginHorizontal: 6,
+    marginVertical: 4,
   },
 });
