@@ -3,120 +3,93 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   Dimensions,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SwipeCard } from '../components';
 import { api } from '../services/api';
+import { SwipeCard } from '../components';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import { ProfileCard } from '../types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export const HomeScreen: React.FC = () => {
-  const [feed, setFeed] = useState<ProfileCard[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [matchModal, setMatchModal] = useState(false);
-
-  const loadFeed = async () => {
-    try {
-      const profiles = await api.getDiscoveryFeed();
-      setFeed(profiles);
-    } catch (error) {
-      console.error('Failed to load feed:', error);
-    }
-  };
+  const [profiles, setProfiles] = useState<ProfileCard[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [chatModal, setChatModal] = useState(false);
+  const [matchedUser, setMatchedUser] = useState<any>(null);
 
   useEffect(() => {
-    loadFeed();
+    loadProfiles();
   }, []);
 
-  const handleSwipeLeft = useCallback(async () => {
-    if (!feed[currentIndex]) return;
-    setLoading(true);
+  const loadProfiles = async () => {
     try {
-      await api.swipeUser(feed[currentIndex].id, 'pass');
-      setCurrentIndex(currentIndex + 1);
+      const data = await api.getDiscoveryFeed();
+      setProfiles(data);
     } catch (error) {
-      console.error('Swipe error:', error);
+      console.error('Failed to load profiles:', error);
     } finally {
       setLoading(false);
     }
-  }, [feed, currentIndex]);
-
-  const handleSwipeRight = useCallback(async () => {
-    if (!feed[currentIndex]) return;
-    setLoading(true);
-    try {
-      const result = await api.swipeUser(feed[currentIndex].id, 'like');
-      if (result.matched) {
-        setMatchModal(true);
-        setTimeout(() => setMatchModal(false), 3000);
-      }
-      setCurrentIndex(currentIndex + 1);
-    } catch (error) {
-      console.error('Swipe error:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [feed, currentIndex]);
-
-  const renderCard = () => {
-    if (currentIndex >= feed.length) {
-      return (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>No more profiles</Text>
-          <Text style={styles.emptyText}>
-            Check back later for more matches
-          </Text>
-        </View>
-      );
-    }
-
-    return (
-      <SwipeCard
-        profile={feed[currentIndex]}
-        onSwipeLeft={handleSwipeLeft}
-        onSwipeRight={handleSwipeRight}
-      />
-    );
   };
+
+  const handleSwipe = async (userId: string, type: 'like' | 'pass' | 'superlike') => {
+    try {
+      const result = await api.swipeUser(userId, type);
+      if (result.matched) {
+        setMatchedUser(profiles.find((p) => p.id === userId));
+        setChatModal(true);
+        setTimeout(() => setChatModal(false), 3000);
+      }
+      setProfiles((prev) => prev.filter((p) => p.id !== userId));
+    } catch (error) {
+      console.error('Failed to swipe:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.logo}>Bridge</Text>
-        <TouchableOpacity>
-          <Text style={styles.filterButton}>Filters</Text>
-        </TouchableOpacity>
+        <Text style={styles.title}>Bridge</Text>
       </View>
 
-      <View style={styles.cardsContainer}>{renderCard()}</View>
-
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.passButton]}
-          onPress={handleSwipeLeft}
-          disabled={loading}
-        >
-          <Text style={styles.actionIcon}>✕</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.likeButton]}
-          onPress={handleSwipeRight}
-          disabled={loading}
-        >
-          <Text style={styles.actionIcon}>♥</Text>
-        </TouchableOpacity>
+      <View style={styles.swipeContainer}>
+        {profiles.length > 0 ? (
+          profiles.map((profile, index) => (
+            <SwipeCard
+              key={profile.id}
+              profile={profile}
+              onSwipeRight={() => handleSwipe(profile.id, 'like')}
+              onSwipeLeft={() => handleSwipe(profile.id, 'pass')}
+              isTop={index === profiles.length - 1}
+            />
+          ))
+        ) : (
+          <View style={styles.empty}>
+            <Text style={styles.emptyText}>No more people nearby</Text>
+            <Text style={styles.emptySubtext}>
+              Check back later for more potential chats
+            </Text>
+          </View>
+        )}
       </View>
 
-      {matchModal && (
-        <View style={styles.matchOverlay}>
-          <Text style={styles.matchTitle}>It's a Match!</Text>
-          <Text style={styles.matchText}>
-            You and {feed[currentIndex]?.name} liked each other
+      {chatModal && (
+        <View style={styles.chatOverlay}>
+          <Text style={styles.chatTitle}>It's a Match!</Text>
+          <Text style={styles.chatText}>
+            You and {matchedUser?.name} liked each other.
           </Text>
         </View>
       )}
@@ -130,83 +103,57 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
   },
-  logo: {
-    ...typography.headingMedium,
+  title: {
+    ...typography.headingLarge,
     color: colors.primary,
   },
-  filterButton: {
-    ...typography.bodyMedium,
-    color: colors.textSecondary,
-  },
-  cardsContainer: {
+  swipeContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyCard: {
-    width: SCREEN_WIDTH - spacing.lg * 2,
-    height: SCREEN_WIDTH * 1.2,
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.large,
+  loading: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  emptyTitle: {
+  empty: {
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  emptyText: {
     ...typography.headingMedium,
     color: colors.textPrimary,
   },
-  emptyText: {
+  emptySubtext: {
     ...typography.bodyMedium,
     color: colors.textSecondary,
     marginTop: spacing.sm,
+    textAlign: 'center',
   },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingVertical: spacing.lg,
-  },
-  actionButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: spacing.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  passButton: {
-    backgroundColor: colors.surface,
-  },
-  likeButton: {
-    backgroundColor: colors.primary,
-  },
-  actionIcon: {
-    fontSize: 28,
-  },
-  matchOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+  chatOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255,107,107,0.9)',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 1000,
   },
-  matchTitle: {
+  chatTitle: {
     ...typography.headingLarge,
+    color: '#fff',
     fontSize: 48,
-    color: colors.primary,
   },
-  matchText: {
+  chatText: {
     ...typography.bodyLarge,
     color: '#fff',
     marginTop: spacing.md,
+    textAlign: 'center',
   },
 });

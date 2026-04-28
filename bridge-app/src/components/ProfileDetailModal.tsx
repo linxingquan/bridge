@@ -14,8 +14,10 @@ interface Props {
   user: SingleUser | null;
   visible: boolean;
   onClose: () => void;
+  onMessagePress: (user: SingleUser) => void;
 }
-export const ProfileDetailModal: React.FC<Props> = ({ user, visible, onClose }) => {
+
+export const ProfileDetailModal: React.FC<Props> = ({ user, visible, onClose, onMessagePress }) => {
   if (!user) return null;
 
   return (
@@ -40,6 +42,13 @@ export const ProfileDetailModal: React.FC<Props> = ({ user, visible, onClose }) 
                 </View>
               ))}
             </View>
+
+            <TouchableOpacity 
+              style={styles.messageButton} 
+              onPress={() => onMessagePress(user)}
+            >
+              <Text style={styles.messageButtonText}>Message</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -100,5 +109,18 @@ const styles = StyleSheet.create({
   interestText: {
     ...typography.bodySmall,
     color: '#fff',
+  },
+  messageButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.large,
+    alignItems: 'center',
+    marginTop: spacing.xl,
+    marginBottom: spacing.lg,
+  },
+  messageButtonText: {
+    ...typography.bodyLarge,
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });

@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { Message, Match } from '../models';
+import { Message, Chat } from '../models';
 import { AuthRequest } from '../middleware/auth';
 
 export const getMessages = async (
@@ -7,16 +7,16 @@ export const getMessages = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { matchId } = req.params;
+    const { chatId } = req.params;
     const userId = req.user?._id;
 
-    const match = await Match.findById(matchId);
-    if (!match) {
-      res.status(404).json({ message: 'Match not found' });
+    const chat = await Chat.findById(chatId);
+    if (!chat) {
+      res.status(404).json({ message: 'Chat not found' });
       return;
     }
 
-    const isParticipant = match.users.some(
+    const isParticipant = chat.users.some(
       (u) => u.toString() === userId?.toString()
     );
 
@@ -25,12 +25,12 @@ export const getMessages = async (
       return;
     }
 
-    const messages = await Message.find({ matchId })
+    const messages = await Message.find({ chatId })
       .sort({ createdAt: 1 })
       .populate('senderId', 'profile.name profile.photos');
 
     await Message.updateMany(
-      { matchId, senderId: { $ne: userId }, isRead: false },
+      { chatId, senderId: { $ne: userId }, isRead: false },
       { isRead: true }
     );
 
@@ -45,17 +45,17 @@ export const sendMessage = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { matchId } = req.params;
+    const { chatId } = req.params;
     const { text, photo } = req.body;
     const senderId = req.user?._id;
 
-    const match = await Match.findById(matchId);
-    if (!match) {
-      res.status(404).json({ message: 'Match not found' });
+    const chat = await Chat.findById(chatId);
+    if (!chat) {
+      res.status(404).json({ message: 'Chat not found' });
       return;
     }
 
-    const isParticipant = match.users.some(
+    const isParticipant = chat.users.some(
       (u) => u.toString() === senderId?.toString()
     );
 
@@ -65,7 +65,7 @@ export const sendMessage = async (
     }
 
     const message = new Message({
-      matchId,
+      chatId,
       senderId,
       text,
       photo,
@@ -83,53 +83,4 @@ export const sendMessage = async (
   }
 };
 
-export const markAsRead = async (
-  req: AuthRequest,
-  res: Response
-): Promise<void> => {
-  try {
-    const { matchId, messageId } = req.params;
-    const userId = req.user?._id;
 
-    await Message.findOneAndUpdate(
-      { _id: messageId, matchId, senderId: { $ne: userId } },
-      { isRead: true }
-    );
-
-    res.json({ message: 'Marked as read' });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-export const addReaction = async (
-  req: AuthRequest,
-  res: Response
-): Promise<void> => {
-  try {
-    const { messageId } = req.params;
-    const { emoji } = req.body;
-    const userId = req.user?._id;
-
-    const message = await Message.findById(messageId);
-    if (!message) {
-      res.status(404).json({ message: 'Message not found' });
-      return;
-    }
-
-    const existingReaction = message.reactions.findIndex(
-      (r) => r.userId.toString() === userId?.toString()
-    );
-
-    if (existingReaction >= 0) {
-      message.reactions[existingReaction].emoji = emoji;
-    } else {
-      message.reactions.push({ userId: userId!, emoji });
-    }
-
-    await message.save();
-    res.json(message);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
-};

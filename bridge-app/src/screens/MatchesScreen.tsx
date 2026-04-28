@@ -11,31 +11,31 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { colors, spacing, borderRadius, typography } from '../theme';
-import { Match } from '../types';
+import { Chat } from '../types';
 
 export const MatchesScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const [matches, setMatches] = useState<Match[]>([]);
+  const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadMatches();
+    loadChats();
   }, []);
 
-  const loadMatches = async () => {
+  const loadChats = async () => {
     try {
-      const data = await api.getMatches();
-      setMatches(data);
+      const data = await api.getChats();
+      setChats(data);
     } catch (error) {
-      console.error('Failed to load matches:', error);
+      console.error('Failed to load chats:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const renderMatch = ({ item }: { item: Match }) => (
+  const renderChat = ({ item }: { item: Chat }) => (
     <TouchableOpacity
-      style={styles.matchCard}
-      onPress={() => navigation.navigate('Chat', { matchId: item.matchId, user: item.user })}
+      style={styles.chatCard}
+      onPress={() => navigation.navigate('Chat', { chatId: item.chatId, user: item.user })}
     >
       <View style={styles.avatarContainer}>
         {item.user.photo ? (
@@ -46,11 +46,11 @@ export const MatchesScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
           </View>
         )}
       </View>
-      <View style={styles.matchInfo}>
-        <Text style={styles.matchName}>{item.user.name}</Text>
-        <Text style={styles.matchCity}>{item.user.city}</Text>
+      <View style={styles.chatInfo}>
+        <Text style={styles.chatName}>{item.user.name}</Text>
+        <Text style={styles.chatCity}>{item.user.city}</Text>
       </View>
-      <Text style={styles.matchTime}>
+      <Text style={styles.chatTime}>
         {new Date(item.matchedAt).toLocaleDateString()}
       </Text>
     </TouchableOpacity>
@@ -59,20 +59,20 @@ export const MatchesScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Matches</Text>
+        <Text style={styles.title}>Chats</Text>
       </View>
-      {matches.length === 0 ? (
+      {chats.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyText}>No matches yet</Text>
+          <Text style={styles.emptyText}>No chats yet</Text>
           <Text style={styles.emptySubtext}>
-            Swipe right on profiles to find matches
+            Swipe right on profiles to start chatting
           </Text>
         </View>
       ) : (
         <FlatList
-          data={matches}
-          keyExtractor={(item) => item.matchId}
-          renderItem={renderMatch}
+          data={chats}
+          keyExtractor={(item) => item.chatId}
+          renderItem={renderChat}
           contentContainerStyle={styles.list}
         />
       )}
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
   list: {
     paddingHorizontal: spacing.md,
   },
-  matchCard: {
+  chatCard: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing.md,
@@ -120,20 +120,20 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#fff',
   },
-  matchInfo: {
+  chatInfo: {
     flex: 1,
   },
-  matchName: {
+  chatName: {
     ...typography.bodyLarge,
     fontWeight: '600',
     color: colors.textPrimary,
   },
-  matchCity: {
+  chatCity: {
     ...typography.bodySmall,
     color: colors.textSecondary,
     marginTop: spacing.xs,
   },
-  matchTime: {
+  chatTime: {
     ...typography.caption,
     color: colors.textMuted,
   },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Modal,
   Dimensions,
   StatusBar,
+  PanResponder,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
@@ -40,6 +41,40 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
 
   const handleSettings = () => {
     navigation.navigate('Settings');
+  };
+
+  const handlePrevPhoto = () => {
+    if (selectedPhotoIndex === null || !profile.photos) return;
+    const newIndex = selectedPhotoIndex === 0 ? profile.photos.length - 1 : selectedPhotoIndex - 1;
+    setSelectedPhotoIndex(newIndex);
+  };
+
+  const handleNextPhoto = () => {
+    if (selectedPhotoIndex === null || !profile.photos) return;
+    const newIndex = selectedPhotoIndex === profile.photos.length - 1 ? 0 : selectedPhotoIndex + 1;
+    setSelectedPhotoIndex(newIndex);
+  };
+
+  const SWIPE_THRESHOLD = 50;
+
+  const photoPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 10;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -SWIPE_THRESHOLD) {
+          handleNextPhoto();
+        } else if (gestureState.dx > SWIPE_THRESHOLD) {
+          handlePrevPhoto();
+        }
+      },
+    })
+  ).current;
+
+  const handleCloseModal = () => {
+    setSelectedPhotoIndex(null);
   };
 
   if (!user?.profile) {
@@ -93,7 +128,7 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
           )}
           <TouchableOpacity style={styles.editPhotosButton} onPress={handleEditProfile}>
             <Text style={styles.editPhotosText}>Edit Photos</Text>
-          </TouchableOpacity>
+</TouchableOpacity>
         </View>
 
         <Modal visible={selectedPhotoIndex !== null} transparent animationType="fade" onRequestClose={() => setSelectedPhotoIndex(null)}>
@@ -102,19 +137,23 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
             <TouchableOpacity style={styles.modalCloseButton} onPress={() => setSelectedPhotoIndex(null)}>
               <Text style={styles.modalCloseText}>×</Text>
             </TouchableOpacity>
-            {selectedPhotoIndex !== null && profile.photos?.[selectedPhotoIndex] && (
-              <Image
-                source={{ uri: profile.photos[selectedPhotoIndex] }}
-                style={styles.modalImage}
-                resizeMode="contain"
-              />
-            )}
+            <View 
+              style={styles.modalPhotoWrapper}
+              {...photoPanResponder.panHandlers}
+            >
+              {selectedPhotoIndex !== null && profile.photos?.[selectedPhotoIndex] && (
+                <Image
+                  source={{ uri: profile.photos[selectedPhotoIndex] }}
+                  style={styles.modalImage}
+                  resizeMode="contain"
+                />
+              )}
+            </View>
             {profile.photos && profile.photos.length > 1 && (
               <View style={styles.modalNav}>
                 <TouchableOpacity
-                  style={[styles.modalNavButton, selectedPhotoIndex === 0 && styles.modalNavButtonDisabled]}
-                  disabled={selectedPhotoIndex === 0}
-                  onPress={() => setSelectedPhotoIndex(selectedPhotoIndex! - 1)}
+                  style={styles.modalNavButton}
+                  onPress={handlePrevPhoto}
                 >
                   <Text style={styles.modalNavText}>←</Text>
                 </TouchableOpacity>
@@ -122,9 +161,8 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
                   {(selectedPhotoIndex || 0) + 1} / {profile.photos.length}
                 </Text>
                 <TouchableOpacity
-                  style={[styles.modalNavButton, selectedPhotoIndex === profile.photos.length - 1 && styles.modalNavButtonDisabled]}
-                  disabled={selectedPhotoIndex === profile.photos.length - 1}
-                  onPress={() => setSelectedPhotoIndex(selectedPhotoIndex! + 1)}
+                  style={styles.modalNavButton}
+                  onPress={handleNextPhoto}
                 >
                   <Text style={styles.modalNavText}>→</Text>
                 </TouchableOpacity>
@@ -335,12 +373,14 @@ const styles = StyleSheet.create({
   },
   modalCloseButton: {
     position: 'absolute',
-    top: 60,
-    right: 20,
+    bottom: 160,
+    alignSelf: 'center',
+    left: '50%',
+    marginLeft: -25,
     zIndex: 10,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -354,9 +394,14 @@ const styles = StyleSheet.create({
     width: screenWidth,
     height: screenHeight * 0.7,
   },
+  modalPhotoWrapper: {
+    width: screenWidth,
+    height: screenHeight * 0.7,
+  },
+  photoWrapper: {
+    position: 'relative',
+  },
   modalNav: {
-    position: 'absolute',
-    bottom: 60,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

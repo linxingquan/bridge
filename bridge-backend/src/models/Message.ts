@@ -1,20 +1,17 @@
 import mongoose, { Document, Schema, Types } from 'mongoose';
 
 export interface IMessage extends Document {
-  matchId: Types.ObjectId;
+  chatId: Types.ObjectId;
   senderId: Types.ObjectId;
   text: string;
-  photo?: string;
-  isRead: boolean;
-  reactions: { userId: Types.ObjectId; emoji: string }[];
-  createdAt: Date;
+  photoUrl?: string;
 }
 
 const messageSchema = new Schema<IMessage>(
   {
-    matchId: {
+    chatId: {
       type: Schema.Types.ObjectId,
-      ref: 'Match',
+      ref: 'Chat',
       required: true,
     },
     senderId: {
@@ -26,25 +23,15 @@ const messageSchema = new Schema<IMessage>(
       type: String,
       default: '',
     },
-    photo: {
+    photoUrl: {
       type: String,
     },
-    isRead: {
-      type: Boolean,
-      default: false,
-    },
-    reactions: [
-      {
-        userId: { type: Schema.Types.ObjectId, ref: 'User' },
-        emoji: { type: String },
-      },
-    ],
   },
   {
     timestamps: true,
   }
 );
 
-messageSchema.index({ matchId: 1, createdAt: -1 });
+messageSchema.index({ chatId: 1, createdAt: 1 });
 
 export const Message = mongoose.model<IMessage>('Message', messageSchema);

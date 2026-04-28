@@ -76,28 +76,33 @@ class ApiService {
     return data;
   }
 
-  async getMatches() {
-    const { data } = await this.client.get('/matches');
+  async getChats() {
+    const { data } = await this.client.get('/chats');
     return data;
   }
 
-  async getMatch(matchId: string) {
-    const { data } = await this.client.get(`/matches/${matchId}`);
+  async startChat(userId: string) {
+    const { data } = await this.client.post('/chats', { userId });
     return data;
   }
 
-  async unmatch(matchId: string) {
-    const { data } = await this.client.delete(`/matches/${matchId}`);
+  async getChat(chatId: string) {
+    const { data } = await this.client.get(`/chats/${chatId}`);
     return data;
   }
 
-  async getMessages(matchId: string) {
-    const { data } = await this.client.get(`/messages/${matchId}`);
+  async deleteChat(chatId: string) {
+    const { data } = await this.client.delete(`/chats/${chatId}`);
     return data;
   }
 
-  async sendMessage(matchId: string, text: string, photo?: string) {
-    const { data } = await this.client.post(`/messages/${matchId}`, { text, photo });
+  async getMessages(chatId: string) {
+    const { data } = await this.client.get(`/messages/${chatId}`);
+    return data;
+  }
+
+  async sendMessage(chatId: string, text: string, photo?: string) {
+    const { data } = await this.client.post(`/messages/${chatId}`, { text, photo });
     return data;
   }
 

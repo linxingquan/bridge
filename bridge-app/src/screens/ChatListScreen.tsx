@@ -10,9 +10,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../services/api';
 import { colors, spacing, borderRadius, typography } from '../theme';
-import { Match } from '../types';
+import { Chat } from '../types';
 
-interface ChatListItem extends Match {
+interface ChatListItem extends Chat {
   lastMessage?: string;
   unreadCount?: number;
 }
@@ -27,7 +27,7 @@ export const ChatListScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
 
   const loadChats = async () => {
     try {
-      const data = await api.getMatches();
+      const data = await api.getChats();
       setChats(data);
     } catch (error) {
       console.error('Failed to load chats:', error);
@@ -39,7 +39,7 @@ export const ChatListScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   const renderChat = ({ item }: { item: ChatListItem }) => (
     <TouchableOpacity
       style={styles.chatCard}
-      onPress={() => navigation.navigate('Chat', { matchId: item.matchId, user: item.user })}
+      onPress={() => navigation.navigate('Chat', { chatId: item.chatId, user: item.user })}
     >
       <View style={styles.avatarContainer}>
         {item.user.photo ? (
@@ -73,13 +73,13 @@ export const ChatListScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
         <View style={styles.empty}>
           <Text style={styles.emptyText}>No messages yet</Text>
           <Text style={styles.emptySubtext}>
-            Match with someone to start chatting
+            Chat with someone to start chatting
           </Text>
         </View>
       ) : (
         <FlatList
           data={chats}
-          keyExtractor={(item) => item.matchId}
+          keyExtractor={(item) => item.chatId}
           renderItem={renderChat}
           contentContainerStyle={styles.list}
         />

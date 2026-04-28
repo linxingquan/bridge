@@ -16,13 +16,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../services/api';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import { SingleUser } from '../types';
-import { ProfileDetailModal } from '../components/ProfileDetailModal';
+import { ChatModal } from '../components/ChatModal';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - spacing.lg * 2;
 const CARD_HEIGHT = CARD_WIDTH * 1.3;
 
 export const SinglesScreen: React.FC = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const [singles, setSingles] = useState<SingleUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -31,10 +34,23 @@ export const SinglesScreen: React.FC = () => {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState<Record<string, number>>({});
   const [selectedUser, setSelectedUser] = useState<SingleUser | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [chatModalVisible, setChatModalVisible] = useState(false);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
 
   const handleProfilePress = (user: SingleUser) => {
     setSelectedUser(user);
-    setModalVisible(true);
+    navigation.navigate('ProfileDetail', { user });
+  };
+
+  const handleMessagePress = async (user: SingleUser) => {
+    try {
+      const { chatId } = await api.startChat(user.id);
+      setCurrentChatId(chatId);
+      setChatModalVisible(true);
+    } catch (error) {
+      console.error('Failed to start chat:', error);
+      Alert.alert('Error', 'Failed to start chat');
+    }
   };
 
   const loadSingles = useCallback(async (pageNum: number = 1, refresh: boolean = false) => {
@@ -207,10 +223,11 @@ export const SinglesScreen: React.FC = () => {
         </View>
       )}
 
-      <ProfileDetailModal
+      <ChatModal
+        chatId={currentChatId}
         user={selectedUser}
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
+        visible={chatModalVisible}
+        onClose={() => setChatModalVisible(false)}
       />
     </SafeAreaView>
   );

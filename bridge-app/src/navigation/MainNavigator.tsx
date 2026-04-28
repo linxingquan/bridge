@@ -33,7 +33,7 @@ const TabIcon: React.FC<{ name: string; focused: boolean; hasUnread?: boolean }>
       <Text style={[styles.tabIcon, focused && styles.tabIconFocused]}>
         {icons[name]}
       </Text>
-      {name === 'Messages' && hasUnread && !focused && (
+      {name === 'Messages' && hasUnread && (
         <View style={styles.unreadBadge} />
       )}
     </View>
@@ -84,10 +84,6 @@ const MainTabs: React.FC = () => {
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.tabLabel,
-        tabBarItemStyle:
-          route.name === 'Messages' && hasUnread
-            ? styles.messagesTabHighlight
-            : undefined,
       })}
     >
       <Tab.Screen name="Singles" component={SinglesScreen} />
@@ -140,12 +136,6 @@ tabBar: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: colors.primary,
-  },
-  messagesTabHighlight: {
-    backgroundColor: `${colors.primary}1A`,
-    borderRadius: 14,
-    marginHorizontal: 6,
-    marginVertical: 4,
+    backgroundColor: '#FF3B30',
   },
 });

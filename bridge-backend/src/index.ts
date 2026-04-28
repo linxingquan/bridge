@@ -39,25 +39,25 @@ app.get('/health', (req, res) => {
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
-  socket.on('join_room', (matchId: string) => {
-    socket.join(matchId);
-    console.log(`User ${socket.id} joined room ${matchId}`);
+  socket.on('join_room', (chatId: string) => {
+    socket.join(chatId);
+    console.log(`User ${socket.id} joined room ${chatId}`);
   });
 
-  socket.on('leave_room', (matchId: string) => {
-    socket.leave(matchId);
+  socket.on('leave_room', (chatId: string) => {
+    socket.leave(chatId);
   });
 
-  socket.on('send_message', (data: { matchId: string; message: unknown }) => {
-    socket.to(data.matchId).emit('receive_message', data.message);
+  socket.on('send_message', (data: { chatId: string; message: unknown }) => {
+    socket.to(data.chatId).emit('receive_message', data.message);
   });
 
-  socket.on('typing_start', (data: { matchId: string; userId: string }) => {
-    socket.to(data.matchId).emit('typing_start', { userId: data.userId });
+  socket.on('typing_start', (data: { chatId: string; userId: string }) => {
+    socket.to(data.chatId).emit('typing_start', { userId: data.userId });
   });
 
-  socket.on('typing_stop', (data: { matchId: string; userId: string }) => {
-    socket.to(data.matchId).emit('typing_stop', { userId: data.userId });
+  socket.on('typing_stop', (data: { chatId: string; userId: string }) => {
+    socket.to(data.chatId).emit('typing_stop', { userId: data.userId });
   });
 
   socket.on('disconnect', () => {

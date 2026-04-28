@@ -34,8 +34,8 @@ export interface Preferences {
   distanceUnit: 'km' | 'miles';
 }
 
-export interface Match {
-  matchId: string;
+export interface Chat {
+  chatId: string;
   user: {
     id: string;
     name: string;
@@ -47,8 +47,13 @@ export interface Match {
 
 export interface Message {
   _id: string;
-  matchId: string;
-  senderId: string;
+  chatId: string;
+  senderId: string | {
+    _id: string;
+    profile: {
+      name: string;
+    };
+  };
   text: string;
   photo?: string;
   isRead: boolean;

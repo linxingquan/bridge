@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { User, Swipe, Match } from '../models';
+import { User, Swipe, Chat } from '../models';
 import { AuthRequest } from '../middleware/auth';
 
 const DAILY_LIKE_LIMIT = 50;
@@ -15,12 +15,11 @@ export const getDiscoveryFeed = async (
       return;
     }
 
-    const userPreferences = user.preferences;
     const myLocation = user.profile.location.coordinates;
 
     const swipedUserIds = await Swipe.find({ fromUserId: user._id }).distinct('toUserId');
     
-    const potentialMatches = await User.find({
+    const potentialChats = await User.find({
       _id: { $nin: swipedUserIds, $ne: user._id },
       isActive: true,
       'profile.photos': { $exists: true, $ne: [] },
@@ -28,7 +27,7 @@ export const getDiscoveryFeed = async (
       .select('profile.name profile.dob profile.gender profile.location profile.photos profile.bio profile.interests')
       .limit(20);
 
-    const feed = potentialMatches.map((u) => ({
+    const feed = potentialChats.map((u) => ({
       id: u._id,
       name: u.profile.name,
       age: new Date().getFullYear() - new Date(u.profile.dob).getFullYear(),
@@ -103,12 +102,12 @@ export const swipeUser = async (req: AuthRequest, res: Response): Promise<void> 
     });
 
     if (mutualSwipe) {
-      const match = new Match({
+      const chat = new Chat({
         users: [fromUserId, toUserId],
       });
-      await match.save();
+      await chat.save();
 
-      res.json({ matched: true, matchId: match._id });
+      res.json({ matched: true, chatId: chat._id });
       return;
     }
 

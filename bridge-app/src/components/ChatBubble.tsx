@@ -6,8 +6,9 @@ import { Message } from '../types';
 interface ChatBubbleProps {
   message: Message;
   isOwn: boolean;
-  isRead: boolean;
-  onLongPress: () => void;
+  isRead?: boolean;
+  onLongPress?: () => void;
+  onNamePress?: () => void;
 }
 
 export const ChatBubble: React.FC<ChatBubbleProps> = ({
@@ -15,11 +16,16 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   isOwn,
   isRead,
   onLongPress,
+  onNamePress,
 }) => {
-  const time = new Date(message.createdAt).toLocaleTimeString([], {
+  const dateTime = new Date(message.createdAt).toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
   });
+
+  const senderName = (message as any).senderId?.profile?.name || 'User';
 
   return (
     <TouchableOpacity
@@ -41,8 +47,16 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           </Text>
         )}
       </View>
-      <View style={styles.meta}>
-        <Text style={styles.time}>{time}</Text>
+      <View style={[styles.meta, !isOwn && styles.otherMeta]}>
+        {!isOwn && onNamePress ? (
+          <TouchableOpacity onPress={onNamePress} style={styles.nameContainer}>
+            <Text style={styles.senderName}>{senderName}</Text>
+            <Text style={styles.time}> • </Text>
+          </TouchableOpacity>
+        ) : !isOwn ? (
+          <Text style={styles.time}>{senderName} • </Text>
+        ) : null}
+        <Text style={styles.time}>{dateTime}</Text>
         {isOwn && isRead && <Text style={styles.read}>✓✓</Text>}
       </View>
     </TouchableOpacity>
@@ -65,11 +79,11 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.large,
   },
   ownBubble: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#FF6B6B',
     borderBottomRightRadius: spacing.xs,
   },
   otherBubble: {
-    backgroundColor: colors.surface,
+    backgroundColor: '#65b457',
     borderBottomLeftRadius: spacing.xs,
   },
   image: {
@@ -85,16 +99,27 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   otherText: {
-    color: colors.textPrimary,
+    color: '#fff',
   },
   meta: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     marginTop: spacing.xs,
   },
+  otherMeta: {
+    justifyContent: 'flex-start',
+  },
   time: {
     ...typography.caption,
     color: colors.textMuted,
+  },
+  senderName: {
+    ...typography.caption,
+    color: '#65b457',
+    fontWeight: '600',
+  },
+  nameContainer: {
+    flexDirection: 'row',
   },
   read: {
     ...typography.caption,

@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { io, Socket } from 'socket.io-client';
@@ -16,14 +17,14 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { ChatBubble } from '../components';
 import { colors, spacing, borderRadius, typography } from '../theme';
-import { Message } from '../types';
+import { Message, SingleUser } from '../types';
 
 const SOCKET_URL = 'http://localhost:3000';
 
 interface Props {
   route: {
     params: {
-      matchId: string;
+      chatId: string;
       user: {
         id: string;
         name: string;
@@ -35,26 +36,56 @@ interface Props {
 }
 
 export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { matchId, user } = route.params;
+  const { chatId, user } = route.params;
   const { user: currentUser } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [typing, setTyping] = useState(false);
+  const [profileUser, setProfileUser] = useState<SingleUser | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
     loadMessages();
     connectSocket();
+    loadUserProfile();
     return () => {
       socketRef.current?.disconnect();
     };
-  }, [matchId]);
+  }, [chatId]);
+
+  const loadUserProfile = async () => {
+    try {
+      const profile = await api.getProfile(user.id);
+      const mappedUser: SingleUser = {
+        id: profile._id,
+        name: profile.profile?.name || user.name,
+        age: profile.profile?.dob ? Math.floor((Date.now() - new Date(profile.profile.dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 0,
+        gender: profile.profile?.gender || 'other',
+        profilePhoto: profile.profile?.profilePhoto || user.photo || '',
+        photos: profile.profile?.photos || [],
+        bio: profile.profile?.bio || '',
+        interests: profile.profile?.interests || [],
+        location: profile.profile?.location?.city || '',
+        height: profile.profile?.height || '',
+        education: profile.profile?.education || '',
+      };
+      setProfileUser(mappedUser);
+    } catch (error) {
+      console.error('Failed to load user profile:', error);
+    }
+  };
+
+  const handleNamePress = () => {
+    if (profileUser) {
+      navigation.navigate('ProfileDetail', { user: profileUser });
+    }
+  };
 
   const connectSocket = () => {
     socketRef.current = io(SOCKET_URL);
-    socketRef.current.emit('join_room', matchId);
+    socketRef.current.emit('join_room', chatId);
     socketRef.current.on('receive_message', (message: Message) => {
       setMessages((prev) => [...prev, message]);
     });
@@ -65,7 +96,7 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const loadMessages = async () => {
     setLoading(true);
     try {
-      const data = await api.getMessages(matchId);
+      const data = await api.getMessages(chatId);
       setMessages(data);
     } catch (error) {
       console.error('Failed to load messages:', error);
@@ -77,9 +108,9 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   const sendMessage = async () => {
     if (!text.trim()) return;
     try {
-      const message = await api.sendMessage(matchId, text.trim());
+      const message = await api.sendMessage(chatId, text.trim());
       setMessages((prev) => [...prev, message]);
-      socketRef.current?.emit('send_message', { matchId, message });
+      socketRef.current?.emit('send_message', { chatId, message });
       setText('');
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -87,20 +118,25 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const handleTyping = () => {
-    socketRef.current?.emit('typing_start', { matchId, userId: currentUser?._id });
+    socketRef.current?.emit('typing_start', { chatId, userId: currentUser?._id });
     setTimeout(() => {
-      socketRef.current?.emit('typing_stop', { matchId, userId: currentUser?._id });
+      socketRef.current?.emit('typing_stop', { chatId, userId: currentUser?._id });
     }, 2000);
   };
 
-  const renderMessage = ({ item }: { item: Message }) => (
-    <ChatBubble
-      message={item}
-      isOwn={item.senderId === currentUser?._id}
-      isRead={item.isRead}
-      onLongPress={() => {}}
-    />
-  );
+  const renderMessage = ({ item }: { item: Message }) => {
+    const senderId = typeof item.senderId === 'string' ? item.senderId : (item.senderId as any)._id;
+    const isFromOther = senderId !== currentUser?._id;
+    return (
+      <ChatBubble
+        message={item}
+        isOwn={senderId === currentUser?._id}
+        isRead={item.isRead}
+        onLongPress={() => {}}
+        onNamePress={isFromOther ? handleNamePress : undefined}
+      />
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -108,16 +144,16 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.backButton}>←</Text>
         </TouchableOpacity>
-        <View style={styles.headerInfo}>
-          {user.photo ? (
-            <Image source={{ uri: user.photo }} style={styles.headerAvatar} />
+        <TouchableOpacity style={styles.headerInfo} onPress={handleNamePress}>
+          {profileUser?.profilePhoto || user.photo ? (
+            <Image source={{ uri: profileUser?.profilePhoto || user.photo }} style={styles.headerAvatar} />
           ) : (
             <View style={[styles.headerAvatar, styles.headerAvatarPlaceholder]}>
               <Text style={styles.headerAvatarText}>{user.name?.charAt(0)}</Text>
             </View>
           )}
           <Text style={styles.headerName}>{user.name}</Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView
@@ -127,12 +163,10 @@ export const ChatScreen: React.FC<Props> = ({ route, navigation }) => {
       >
         <FlatList
           ref={flatListRef}
-          data={messages}
+          data={[...messages].reverse()}
+          inverted
           keyExtractor={(item) => item._id}
           renderItem={renderMessage}
-          onContentSizeChange={() =>
-            flatListRef.current?.scrollToEnd({ animated: false })
-          }
           contentContainerStyle={styles.messageList}
         />
 
@@ -180,7 +214,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     fontSize: 24,
-    color: colors.textPrimary,
+    color: colors.primary,
     marginRight: spacing.md,
   },
   headerInfo: {
@@ -247,11 +281,10 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
   },
   sendButtonDisabled: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.textMuted,
   },
   sendButtonText: {
-    ...typography.bodyMedium,
-    fontWeight: '600',
     color: '#fff',
+    fontWeight: '600',
   },
 });
