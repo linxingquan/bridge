@@ -3,3 +3,6 @@ bridge-backend/uploads/
 bridge-backend/node_modules/
 bridge-backend/dist/
 bridge-app/node_modules/
+bridge-app/ios/
+bridge-app/android/
+bridge-app/.expo/
