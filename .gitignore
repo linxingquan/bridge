@@ -1,2 +1,5 @@
 bridge-backend/uploads/
 **/.DS_Store
+bridge-backend/node_modules/
+bridge-backend/dist/
+bridge-app/node_modules/
